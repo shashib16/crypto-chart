@@ -1,103 +1,113 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
+import { useEffect, useState } from 'react'
+import Sidebar from '@/components/SideBar'
+import Header from '@/components/Header'
+import MetricCard from '@/components/MetricCard'
+import LiveChart from '@/components/LiveChart'
+import PieChart from '@/components/PieChart'
+import CryptoList from '@/components/CryptoList'
+import { DashboardSkeleton } from '@/components/skeleton/DashboardSkeleton'
+import { useAppDispatch, useAppSelector }  from '@/store/hooks'
+import { fetchDashboardMetrics, updateMetric } from '@/store/slices/dashboardSlice'
+import { fetchCryptoList, updateCryptoPrices } from '@/store/slices/cryptoSlice'
+import { fetchChartData, updateLivePrice } from '@/store/slices/marketSlice'
+
+export default function DashboardPage() {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+const dispatch = useAppDispatch()
+  const { loading } = useAppSelector(state => state.dashboard)
+
+  
+
+  useEffect(() => {
+    // Initial data fetch
+    dispatch(fetchDashboardMetrics())
+    dispatch(fetchCryptoList({ page: 1 }))
+    dispatch(fetchChartData('1H'))
+    
+    // Simulate real-time updates
+    const metricsInterval = setInterval(() => {
+      // Random metric updates
+      const metrics = ['totalMarketCap', 'volume24h', 'btcDominance', 'activeCoins'] as const
+      const randomMetric = metrics[Math.floor(Math.random() * metrics.length)]
+      const randomChange = (Math.random() - 0.5) * 2
+      
+      dispatch(updateMetric({ metric: randomMetric, change: randomChange }))
+    }, 5000)
+    
+    // Crypto price updates
+    const priceInterval = setInterval(() => {
+      dispatch(updateCryptoPrices())
+    }, 3000)
+    
+    // Live chart updates
+    const chartInterval = setInterval(() => {
+      dispatch(updateLivePrice())
+    }, 2000)
+    
+    return () => {
+      clearInterval(metricsInterval)
+      clearInterval(priceInterval)
+      clearInterval(chartInterval)
+    }
+  }, [dispatch])
+
+if (loading) {
+    return <DashboardSkeleton />
+  }
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} />
+      
+      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${
+        sidebarCollapsed ? 'ml-20' : 'ml-64'
+      }`}>
+        <Header />
+        
+        <main className="flex-1 overflow-y-auto bg-gray-900 p-6">
+          {/* Metrics Section */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <MetricCard
+              title="Total Market Cap"
+              value="$1.78T"
+              change={2.34}
+              trend="up"
+              metricsKey="totalMarketCap"
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+            <MetricCard
+              title="24h Volume"
+              value="$98.3B"
+              change={-1.45}
+              trend="down"
+              metricsKey="volume24h"
+            />
+            <MetricCard
+              title="BTC Dominance"
+              value="52.3%"
+              change={0.8}
+              trend="up"
+              metricsKey="btcDominance"
+            />
+            <MetricCard
+              title="Active Coins"
+              value="2,341"
+              change={3.2}
+              trend="up"
+              metricsKey="activeCoins"
+            />
+          </div>
+
+          {/* Charts Section - Now with more space when sidebar is collapsed */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <LiveChart />
+            <PieChart />
+          </div>
+
+          {/* Crypto List */}
+          <CryptoList />
+        </main>
+      </div>
     </div>
-  );
+  )
 }
