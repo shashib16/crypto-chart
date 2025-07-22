@@ -1,0 +1,205 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  password        String
+  firstName       String
+  lastName        String
+  status          UserStatus @default(ACTIVE)
+  emailVerified   Boolean   @default(false)
+  twoFactorEnabled Boolean  @default(false)
+  lastLogin       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  portfolios      Portfolio[]
+  orders          Order[]
+  sessions        UserSession[]
+  apiKeys         ApiKey[]
+
+  @@map("users")
+}
+
+// User status enum
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+
+  @@map("user_status")
+}
+
+// User sessions for token management
+model UserSession {
+  id            String    @id @default(cuid())
+  userId        String
+  token         String    @unique
+  refreshToken  String?   @unique
+  expiresAt     DateTime
+  createdAt     DateTime  @default(now())
+  lastUsedAt    DateTime  @default(now())
+  ipAddress     String?
+  userAgent     String?
+  isRevoked     Boolean   @default(false)
+
+  // Relations
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_sessions")
+}
+
+// Portfolio model
+model Portfolio {
+  id            String    @id @default(cuid())
+  userId        String
+  name          String
+  balance       Decimal   @default(0.00) @db.Decimal(20, 8)
+  currency      String    @default("USD")
+  isDefault     Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  holdings      Holding[]
+  orders        Order[]
+
+  @@map("portfolios")
+}
+
+// Holdings model
+model Holding {
+  id            String    @id @default(cuid())
+  portfolioId   String
+  symbol        String
+  quantity      Decimal   @db.Decimal(20, 8)
+  avgPrice      Decimal   @db.Decimal(20, 8)
+  totalCost     Decimal   @db.Decimal(20, 8)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  portfolio     Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@unique([portfolioId, symbol])
+  @@map("holdings")
+}
+
+// Order model
+model Order {
+  id                String      @id @default(cuid())
+  userId            String
+  portfolioId       String
+  symbol            String
+  side              OrderSide
+  type              OrderType
+  quantity          Decimal     @db.Decimal(20, 8)
+  price             Decimal?    @db.Decimal(20, 8)
+  stopPrice         Decimal?    @db.Decimal(20, 8)
+  status            OrderStatus @default(PENDING)
+  executedQuantity  Decimal     @default(0.00) @db.Decimal(20, 8)
+  executedPrice     Decimal?    @db.Decimal(20, 8)
+  fee               Decimal?    @db.Decimal(20, 8)
+  binanceOrderId    String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  executedAt        DateTime?
+
+  // Relations
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  portfolio         Portfolio   @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  trades            Trade[]
+
+  @@map("orders")
+}
+
+// Order enums
+enum OrderSide {
+  BUY
+  SELL
+
+  @@map("order_side")
+}
+
+enum OrderType {
+  MARKET
+  LIMIT
+  STOP
+  STOP_LIMIT
+
+  @@map("order_type")
+}
+
+enum OrderStatus {
+  PENDING
+  FILLED
+  PARTIALLY_FILLED
+  CANCELLED
+  REJECTED
+  EXPIRED
+
+  @@map("order_status")
+}
+
+// Trade model (execution records)
+model Trade {
+  id            String    @id @default(cuid())
+  orderId       String
+  symbol        String
+  side          OrderSide
+  quantity      Decimal   @db.Decimal(20, 8)
+  price         Decimal   @db.Decimal(20, 8)
+  fee           Decimal   @db.Decimal(20, 8)
+  feeCurrency   String
+  binanceTradeId String?
+  executedAt    DateTime  @default(now())
+
+  // Relations
+  order         Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("trades")
+}
+
+// API Keys for external integrations
+model ApiKey {
+  id            String    @id @default(cuid())
+  userId        String
+  name          String
+  keyHash       String    @unique
+  permissions   Json      // Store permissions as JSON
+  lastUsedAt    DateTime?
+  expiresAt     DateTime?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+
+  // Relations
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("api_keys")
+}
+
+// Market data cache
+model MarketData {
+  id                String    @id @default(cuid())
+  symbol            String    @unique
+  price             Decimal   @db.Decimal(20, 8)
+  priceChange       Decimal   @db.Decimal(20, 8)
+  priceChangePercent Decimal  @db.Decimal(10, 4)
+  volume            Decimal   @db.Decimal(20, 8)
+  high24h           Decimal   @db.Decimal(20, 8)
+  low24h            Decimal   @db.Decimal(20, 8)
+  lastUpdate        DateTime  @default(now())
+
+  @@map("market_data")
+}
