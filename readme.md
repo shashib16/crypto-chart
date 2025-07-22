@@ -122,5 +122,3 @@ Key endpoints:
 - `/auth` - Authentication endpoints
 - `/crypto` - Cryptocurrency data endpoints
 - `/market` - Market analysis endpoints
-
-// ...existing code...
